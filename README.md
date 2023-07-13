@@ -12,24 +12,34 @@ PRIVATE_KEY=...
 
 **Note**: `ETHERSCAN_KEY` should match the block explorer key of the network you are deploying. 
 
-
-## Hardhat configuration
-
-Firstly, configure your network (arbitrum/bsc/mainnet) inside `./hardhat.config.ts`.
-
-Secondly, please also configure the `NETWORK` variable in `./scripts/configuration.ts` accordingly:
-
-```ts
-export const NETWORK = SUPPORTED_CHAINS.MAINNET;
-```
-
 ## Deployment
 
 ### Contract and Parameters preparation
 
 First step is to get your contract ready inside `./contracts/` folder as we currently have `./contracts/SwETHSY.sol`.
 
-After that, you will have to fill in the parameters for `MarketConfiguration` in `./scripts/configuration.ts`. 
+After that, you will have to fill in the parameters for the following parameters corresponding to your interest bearing token:
+```ts
+/**
+ * @dev The following parameters are used to calculate the market deployment params
+ * @minApy and @maxApy are the minimum and maximum APY of the interest bearing asset
+ * @startTimestamp and @endTimestamp are the start and end time of the market 
+ */
+const minApy = 0.01; // 1%
+const maxApy = 0.05; // 5%
+const startTimestamp = 1689206400;
+const endTimestamp = 1750896000;
+
+export const MarketConfiguration = {
+    name: 'SY swETH',
+    symbol: 'SY-swETH',
+    doCacheIndex: true,
+    expiry: endTimestamp,
+    ...calculateParameters(minApy, maxApy, startTimestamp, endTimestamp),
+};
+```
+
+The remaining three fields in MarketConfiguration are `name`, `symbol` (quite straight-forward) and `doCacheIndex`. For `doCacheIndex`, we usually leave it as `true` for ethereum mainnet deployment and `false` for any other chain to save gas for PT/YT related transactions. 
 
 ### Run deployment script
 
@@ -70,7 +80,7 @@ export const AMOUNT_TO_SEED = toWei(0.01);
 ### Run script
 
 ```
-yarn hardhat run scripts/seed-liquidity.ts
+yarn hardhat run scripts/seed-liquidity.ts --network <YOUR_NETWORK_NAME>
 ```
 
 ## Final notes

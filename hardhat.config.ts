@@ -26,7 +26,18 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       url: 'https://rpc.ankr.com/eth',
-      accounts: [PRIVATE_KEY]
+      accounts: [PRIVATE_KEY],
+      chainId: 1
+    },
+    arbitrum: {
+      url: 'https://rpc.ankr.com/arbitrum',
+      accounts: [PRIVATE_KEY],
+      chainId: 42161
+    },
+    bsc: {
+      url: 'https://rpc.ankr.com/bsc',
+      accounts: [PRIVATE_KEY],
+      chainId: 56
     }
   },
   solidity: {

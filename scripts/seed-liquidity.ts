@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
-import {delay,getContractAt,getPendleContracts, safeApproveInf } from './helper';
+import { delay, getContractAt, getPendleContracts, safeApproveInf } from './helper';
 import { SUPPORTED_CHAINS } from './types';
 import { INF, SAFE_WAIT_TIME, ZERO_ADDRESS } from './consts';
 import { AMOUNT_TO_SEED, UNDERLYING_TO_SEED_LIQUIDITY } from './configuration';
-import marketAddresses from '../deployments/SY-swETH.json'
+import marketAddresses from '../deployments/SY-swETH.json';
 import { IERC20, IStandardizedYield } from '../typechain-types';
 
 async function main() {
@@ -20,7 +20,6 @@ async function main() {
         await safeApproveInf(deployer, UNDERLYING_TO_SEED_LIQUIDITY, pendleContracts.router.address);
         await delay(SAFE_WAIT_TIME, 'after approve underlying');
     }
-
 
     const SY = await getContractAt<IStandardizedYield>('IStandardizedYield', marketAddresses.SY);
     const PT = await getContractAt<IERC20>('IERC20', marketAddresses.PT);
@@ -53,10 +52,9 @@ async function main() {
                 needScale: false,
             },
         },
-        {...overrides}
+        { ...overrides }
     );
     await delay(SAFE_WAIT_TIME, 'after mintSyFromToken');
-
 
     await SY.approve(pendleContracts.router.address, INF);
 

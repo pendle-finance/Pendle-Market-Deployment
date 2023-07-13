@@ -9,7 +9,14 @@ import bnbConfiguration from '@pendle/core-v2/deployments/56-core.json';
 import { PendleContracts, SUPPORTED_CHAINS } from './types';
 import { IERC20, IPAllAction, PendleMarketFactory, PendleYieldContractFactory } from '../typechain-types';
 import { INF } from './consts';
-import { NETWORK } from './configuration';
+
+export function getNetwork() {
+    return {
+        [1]: SUPPORTED_CHAINS.MAINNET,
+        [56]: SUPPORTED_CHAINS.BSC,
+        [42161]: SUPPORTED_CHAINS.ARBITRUM,
+    }[hre.network.config.chainId!]!;
+}
 
 export function toWei(num: number): BN {
     return BN.from(Math.floor(10 ** 9 * num)).mul(10 ** 9);
@@ -61,7 +68,7 @@ export async function getPendleContracts(): Promise<PendleContracts> {
         [SUPPORTED_CHAINS.MAINNET]: ethereumConfiguration,
         [SUPPORTED_CHAINS.ARBITRUM]: arbitrumConfiguration,
         [SUPPORTED_CHAINS.BSC]: bnbConfiguration,
-    }[NETWORK];
+    }[getNetwork()];
 
     return {
         router: await getContractAt<IPAllAction>('IPAllAction', config.router),
@@ -85,3 +92,4 @@ export async function safeApproveInf(deployer: SignerWithAddress, token: string,
     const allowance = await contract.allowance(deployer.address, to);
     if (allowance.lt(INF.div(2))) await contract.connect(deployer).approve(to, INF);
 }
+
