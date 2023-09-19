@@ -1,19 +1,37 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.17;
 import "@pendle/core-v2/contracts/core/StandardizedYield/SYBase.sol";
-import "./interfaces/ISwETH.sol";
+import "@pendle/core-v2/contracts/core/libraries/ArrayLib.sol";
 
-contract SwETHSY is SYBase {
+interface IStaderStakeManager {
+    function deposit(address _receiver) external payable returns (uint256);
+
+    function previewDeposit(uint256 _assets) external view returns (uint256);
+
+    function previewWithdraw(uint256 _shares) external view returns (uint256);
+
+    function getExchangeRate() external view returns (uint256);
+
+    function maxDeposit() external view returns (uint256);
+
+    function minDeposit() external view returns (uint256);
+}
+
+contract ETHXSY is SYBase {
     using PMath for uint256;
 
-    address public immutable swETH;
+    error StaderMaxDepositExceed(uint256 amountToDeposit, uint256 maxDeposit);
+    error StaderMinDepositUnreached(uint256 amountToDeposit, uint256 minDeposit);
+
+    address public immutable stakeManager;
+    address public immutable ethx;
 
     constructor(
-        string memory _name,
-        string memory _symbol,
-        address _swETH
-    ) SYBase(_name, _symbol, _swETH) {
-        swETH = _swETH;
+        address _stakeManager,
+        address _ethx
+    ) SYBase("SY Stader Staking ETHx", "SY-ETHx", _ethx) {
+        stakeManager = _stakeManager;
+        ethx = _ethx;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -25,11 +43,9 @@ contract SwETHSY is SYBase {
         uint256 amountDeposited
     ) internal virtual override returns (uint256 /*amountSharesOut*/) {
         if (tokenIn == NATIVE) {
-            uint256 preBalance = _selfBalance(swETH);
-            ISwETH(swETH).deposit{ value: amountDeposited }();
-            return _selfBalance(swETH) - preBalance;
+            return
+                IStaderStakeManager(stakeManager).deposit{ value: amountDeposited }(address(this));
         } else {
-            // sweth
             return amountDeposited;
         }
     }
@@ -39,7 +55,7 @@ contract SwETHSY is SYBase {
         address /*tokenOut*/,
         uint256 amountSharesToRedeem
     ) internal virtual override returns (uint256 /*amountTokenOut*/) {
-        _transferOut(swETH, receiver, amountSharesToRedeem);
+        _transferOut(ethx, receiver, amountSharesToRedeem);
         return amountSharesToRedeem;
     }
 
@@ -48,7 +64,7 @@ contract SwETHSY is SYBase {
     //////////////////////////////////////////////////////////////*/
 
     function exchangeRate() public view virtual override returns (uint256) {
-        return ISwETH(swETH).getRate();
+        return IStaderStakeManager(stakeManager).getExchangeRate();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -60,7 +76,15 @@ contract SwETHSY is SYBase {
         uint256 amountTokenToDeposit
     ) internal view override returns (uint256 /*amountSharesOut*/) {
         if (tokenIn == NATIVE) {
-            return amountTokenToDeposit.divDown(ISwETH(swETH).getRate());
+            uint256 maxDeposit = IStaderStakeManager(stakeManager).maxDeposit();
+            uint256 minDeposit = IStaderStakeManager(stakeManager).minDeposit();
+            if (amountTokenToDeposit > maxDeposit) {
+                revert StaderMaxDepositExceed(amountTokenToDeposit, maxDeposit);
+            }
+            if (amountTokenToDeposit < minDeposit) {
+                revert StaderMinDepositUnreached(amountTokenToDeposit, minDeposit);
+            }
+            return IStaderStakeManager(stakeManager).previewDeposit(amountTokenToDeposit);
         } else {
             return amountTokenToDeposit;
         }
@@ -73,23 +97,20 @@ contract SwETHSY is SYBase {
         return amountSharesToRedeem;
     }
 
-    function getTokensIn() public view virtual override returns (address[] memory res) {
-        res = new address[](2);
-        res[0] = swETH;
-        res[1] = NATIVE;
+    function getTokensIn() public view virtual override returns (address[] memory) {
+        return ArrayLib.create(NATIVE, ethx);
     }
 
-    function getTokensOut() public view virtual override returns (address[] memory res) {
-        res = new address[](1);
-        res[0] = swETH;
+    function getTokensOut() public view virtual override returns (address[] memory) {
+        return ArrayLib.create(ethx);
     }
 
     function isValidTokenIn(address token) public view virtual override returns (bool) {
-        return token == NATIVE || token == swETH;
+        return token == ethx || token == NATIVE;
     }
 
     function isValidTokenOut(address token) public view virtual override returns (bool) {
-        return token == swETH;
+        return token == ethx;
     }
 
     function assetInfo()
